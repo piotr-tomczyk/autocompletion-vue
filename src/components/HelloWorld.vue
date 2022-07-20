@@ -1,58 +1,118 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+  <div ref="autocomplete" class="autocomplete">
+    <div class="autocomplete-placeholder" v-if="search && results && !sameLength">{{autocomplete_value}}</div>
+    <textarea @input="onChange" v-model="search" @keyup.down="onArrowDown" @keyup.up="onArrowUp" @keyup.right="onEnter" @keyup.tab="onEnter"/>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
+<script setup>
+import {defineProps, ref, onMounted, onUnmounted, computed} from 'vue';
+const props = defineProps({
+  items: {
+    type: Array,
+    required: false,
+    default: () => []
+  }
+})
+const autocomplete = ref(null);
+let results = ref([]);
+let search = ref("");
+let arrowCounter = ref(0);
+
+const autocomplete_value = computed(() => {
+  if (results.value.length > 0) {
+    const search_split = search.value.split(' ');
+    return search.value + results.value[arrowCounter.value].slice(search_split[search_split.length - 1].length).toLowerCase();
+  }
+  return "";
+})
+
+const sameLength = computed(()=> {
+  const search_split = search.value.split(' ');
+  if (results.value.length > 0 && search_split.length > 0)
+    return search_split[search_split.length - 1].length === results.value[arrowCounter.value].length;
+  return false;
+})
+
+function onChange() {
+    filterResults();
+}
+
+function filterResults() {
+  const search_split = search.value.split(' ');
+  if (search_split.length > 0) {
+    if (search_split[search_split.length - 1] === '') {
+      results.value = [];
+      return;
+    }
+      results.value = props.items.filter(item => {
+        return item.toLowerCase().indexOf(search_split[search_split.length - 1].toLowerCase()) === 0;
+      });
   }
 }
+function onArrowDown() {
+  if (arrowCounter.value < results.value.length - 1) {
+    arrowCounter.value += 1;
+  }
+}
+function onArrowUp() {
+  if (arrowCounter.value > 0) {
+    arrowCounter.value -= 1;
+  }
+}
+function onEnter() {
+  const search_split = search.value.split(' ');
+  if (results.value.length > 0) {
+    search.value = search.value + results.value[arrowCounter.value].slice(search_split[search_split.length - 1].length).toLowerCase() || "";
+    arrowCounter.value = 0;
+  }
+}
+function handleClickOutside(evt) {
+  if (!autocomplete.value.contains(evt.target)) {
+    arrowCounter.value = 0;
+  }
+}
+
+onMounted(()=>{
+  document.addEventListener("click", handleClickOutside);
+})
+
+onUnmounted(() => {
+  document.removeEventListener("click", handleClickOutside);
+})
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-h3 {
-  margin: 40px 0 0;
+.autocomplete-placeholder {
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+  cursor: text;
+  color: #999;
+  font-size: 5em;
+  padding-bottom: 1px;
+  padding-top: 1px;
+  font-weight: initial;
+  white-space: pre-wrap;
 }
-ul {
-  list-style-type: none;
+textarea {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px black solid;
+  outline: none ! important;
+  width: 100vw;
+  height: 100vh;
+  background-color: transparent;
+  font-size: 5em;
   padding: 0;
+  font-weight: initial;
+  font-family: "Avenir", Helvetica, Arial, sans-serif;
 }
-li {
-  display: inline-block;
-  margin: 0 10px;
+
+.autocomplete {
+  position: relative;
+  height: 100vh;
+  margin:1em;
 }
-a {
-  color: #42b983;
-}
+
 </style>
